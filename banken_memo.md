@@ -46,6 +46,10 @@ end
       - class_pathで返ってきた配列を File.join するので正しいパスが得られる
     - file_name は class_path で作った ["tes", "posts"] などの配列の最後の要素を取得している(["tes", "posts"].pop されているだけ)
     - https://github.com/rails/rails/blob/5ccdd0bb6d1262a670645ddf3a9e334be4545dac/railties/lib/rails/generators/named_base.rb#L155
+- template メソッドとは何か
+  - tmp
+- hook_for メソッドとは何か
+  - tmp
 
 # Banken使用で何が行われるか
 - チュートリアルの順にBanken gemのどのコードが実行されて、何が行われるのか検証
