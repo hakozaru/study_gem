@@ -47,9 +47,31 @@ end
     - file_name は class_path で作った ["tes", "posts"] などの配列の最後の要素を取得している(["tes", "posts"].pop されているだけ)
     - https://github.com/rails/rails/blob/5ccdd0bb6d1262a670645ddf3a9e334be4545dac/railties/lib/rails/generators/named_base.rb#L155
 - template メソッドとは何か
-  - tmp
+  - 実はthorのメソッド( https://github.com/erikhuda/thor/blob/067f6638f95bd000b0a92cfb45b668bca5b0efe3/lib/thor/actions/file_manipulation.rb#L108 )
+  - 第一引数のファイルを、第二引数のディレクトリへ複製する
+    - File.expand_path は絶対パスにした文字列を返す
 - hook_for メソッドとは何か
-  - tmp
+  - Rails::Generators::Base にあるメソッド( https://github.com/rails/rails/blob/5ccdd0bb6d1262a670645ddf3a9e334be4545dac/railties/lib/rails/generators/base.rb#L168 )
+  - 指定した値に基づいてジェネレータを呼び出すらしい
+  - ここでは :test_framework を呼び出している
+  - 実際にrails g banken:loyalty posts を実行すると、minitestのファイルを生成しているので、現在使用されているテストのファイルを作成するっぽい
+- class_name とは何か
+  - こいつは NamedBase に定義されているメソッド( https://github.com/rails/rails/blob/5ccdd0bb6d1262a670645ddf3a9e334be4545dac/railties/lib/rails/generators/named_base.rb#L75 )
+  - class_path と file_name から名前の通りクラス名を作成している
+  - (class_path + [file_name]).map!(&:camelize).join("::") こんな感じ
+    - class_path は↑で書いた通り、["tes", "posts"]こんな配列が入っている
+    - file_name も同じく↑で書いた通り "posts" が入っている
+      - (class_path は file_name の取得時にpopされているので、["tes"]のみが入っている)
+    - そんなこんなで (class_path + [file_name]) は -> ["tes", "posts"]となる
+    - あとは普通にクラス名っぽく変換して結合しているだけなので、"Tes::Posts" こんな文字列が返る
+- module_namespacing とは何か
+  - こいつも NamedBase のメソッド( https://github.com/rails/rails/blob/5ccdd0bb6d1262a670645ddf3a9e334be4545dac/railties/lib/rails/generators/base.rb#L281 )
+  - もし名前空間が与えられていた場合は、ブロックを現在のアプリケーションの名前空間でラップする
+  - やってみた
+    - rails g banken:loyalty test/aaa/posts
+    - class Test::Aaa::PostsLoyalty < ApplicationLoyalty; end
+      - イメージとしては module Test module Aaa みたいにラップされると思ったのだがラップされない? これが正しい出力なのか?
+      - もうちょい調査する
 
 # Banken使用で何が行われるか
 - チュートリアルの順にBanken gemのどのコードが実行されて、何が行われるのか検証
