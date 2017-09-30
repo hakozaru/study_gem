@@ -35,7 +35,7 @@
 
 # その他
 - なぜgemをインストールすると lib/ が $LOAD_PATH に追加されるのか
-  - gemには (gem名).gemspec というファイルがあり、その中に require_paths というメソッドがあり、この require_paths で指定されたディレクトリが $LOAD_PATH に追加される
+  -  (gem名).gemspec というファイルの中に require_paths というメソッドがあり、この require_paths で指定されたディレクトリが $LOAD_PATH に追加される
   - ほとんどの場合、この require_paths で指定されるのは lib なので、libが追加されていた
     - Bundler が生成するgemのテンプレートも lib が初期値となっている(gitのmasterと同じ感じか)
 
