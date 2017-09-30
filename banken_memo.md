@@ -15,7 +15,7 @@
 
 # class << self の部分
 
-```
+```ruby
 class << self
   def loyalty!(controller_name, user, record=nil)
     LoyaltyFinder.new(controller_name).loyalty!.new(user, record)
@@ -95,3 +95,60 @@ end
 
 ## アクションの制御
 - https://github.com/kyuden/banken/wiki/Tutorial-(japanese)#%E3%82%A2%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%AE%E5%88%B6%E5%BE%A1
+  - authorize! メソッド
+    - lib/banken.rb に定義されているメソッド
+    - `loyalty = loyalty(record)`
+      - loyaltyメソッドではまず、 params[:controller] からコントローラ名を取得し、Banken.loyalty! を実行
+      - LoyaltyFinder ではコントローラ名から「〇〇Loyalty」のようなクラスを探し、loyaltyの定義がされているか判定
+        - もし定義されていなければ NotDefinedError を発生
+        - 定義されていれば「〇〇Loyalty」クラスを返す
+        - ここまでが `LoyaltyFinder.new(controller_name).loyalty!` の挙動
+      - Banken.loyalty! は「〇〇Loyalty」があれば、そのログインユーザーと権限調査対象のオブジェクトからインスタンスを作成する
+        - ここではまだ権限チェックはされず、「〇〇Loyalty」のインスタンスを返すだけ
+        - これが loyalty 変数に格納される
+    - `unless loyalty.public_send(banken_query_name)`
+      - loyaltyは「〇〇Loyalty」クラスのインスタンス
+      - public_send はレシーバの持つパブリックなメソッドを呼び出すメソッド
+        - 引数の banken_query_name は "#{params[:action]}?" こんな文字列を返すメソッド
+        - すなわち、「〇〇Loyalty」に定義された各アクションの権限チェックメソッドを呼び出している(index? など)
+        - そしてその戻り値がfalseであれば、 NotAuthorizedError が発生し、操作権限がない。ということになる。
+
+## Loyaltyクラスの実装
+- 「〇〇Loyalty」の内部では、current_userがuserで、authorize! の第一引数はrecordでアクセスが可能
+  - これは authorize! が実行されたときに Banken.loyalty! が実行され、loyalty! で実行される (〇〇Loyaltyのインスタンス).new(user, record) が実行されると、初期化処理でuserとrecordが作成されるため
+  - なお、「〇〇Loyalty」にはinitializeメソッドは定義されていないが、親のApplicationLoyaltyに定義されている
+- 例外
+  - lib/banken/error.rb に定義されている
+  - StandardError を親とするエラー群
+  - `message = options.fetch(:message) { "not allowed to #{query} of #{controller} by #{loyalty.inspect}" }`
+    - optionsにはmessageというキーは存在しないので、ブロックの戻り値が返る -> message変数にはブロックの内容が入る
+  - `super(message)`
+    - これは StandardError の initialize メソッドを実行している
+    - ここだけ見るとよくわからないが、 super(message) を実行するのとしないのでは以下のようにエラーログの表示が変化する
+      - super(message) あり
+        - `tes.rb:47:in <main>: not allowed to update? of posts_controller by "#<TestClass:0x007ff692177740>" (NotAuthorizedError)`
+      - super(message) なし
+        - `tes.rb:47:in <main>: NotAuthorizedError (NotAuthorizedError)`
+    - ちゃんと NotAuthorizedError 内部で作成したメッセージがコンソールに表示されているのがわかる
+
+## Viewの制御
+- bankenはincludedでhelper_methodとしてloyaltyを提供している
+
+```ruby
+def loyalty(record=nil, controller_name=nil)
+  controller_name = banken_controller_name unless controller_name
+  Banken.loyalty!(controller_name, banken_user, record)
+end
+```
+
+- 前述の通り、このloyaltyメソッドで返るのは、「〇〇Loyalty」のインスタンス
+- 「〇〇Loyalty」には各種操作権限調査のメソッド(edit? など)が定義されているので、それを呼び出すだけ
+  - `loyalty(@post, :posts).update?` は PostsLoyalty の update? インスタンスメソッドを呼んでいる
+
+## さいごに
+- 一部の共通処理をモジュールに分離したり
+  - `update?` などの判定が多くの「〇〇Loyalty」で共通していればmoduleにしてincludeしたり、ApplicationLoyalty を継承した LoyaltyBase みたいなクラス作って、そのBaseクラスを継承した「〇〇Loyalty」を作ればDRYになる
+
+## その他
+- permitted_attributes メソッド
+  - demodulize メソッドで名前空間を除いた authorize! の引数のクラス名を取得("User::Name".demodulize => "Name")し、アンダースコアの形に変換
