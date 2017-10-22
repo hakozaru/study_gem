@@ -40,8 +40,11 @@
     - Bundler が生成するgemのテンプレートも lib が初期値となっている(gitのmasterと同じ感じか)
 
 # 番外
+- Gemのディレクトリ
+  - Gem::RUBYGEMS_DIRで確認が可能
 - Bundler を使った時はどうなるのか
   - tmp
 
 # 参考
 - http://ongaeshi.hatenablog.com/entry/20111214/1323830203
+- https://www.slideshare.net/babatakao/gem-release
