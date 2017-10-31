@@ -189,9 +189,9 @@ end
 ```
 
 - ここでは二つのことをやっている
-  - 1. インスタンス変数の追加
-    - `@test = {"text1"=>"abcd", "text2"=>"xyz"}`
-    - `@hoge = {"huga"=>12345}`
+  - 1. インスタンス変数の追加(valはnilなので定義のみ)
+    - `@test = nil`
+    - `@hoge = nil`
   - 2. インスタンスのクラスのインスタンスメソッドに `test` と `hoge` を定義(ゲッター的役割のメソッド)
     - クラスをレシーバにした `class_eval` で、普通に `def 〜 end` とした場合は、インスタンスメソッドとして定義される
 - 以上で `@instance` の生成が完了したので、 `instance` クラスメソッドの `create_accessors!(クラスメソッド)` の内容を確認する
@@ -220,4 +220,55 @@ end
 - `Settings.test` でも `settings_instance.test` でも同じymlの設定を呼べているのはこれが理由
 
 # Settings.test.text1 と呼べるのはなぜか
+- `Settings.〇〇` を呼んだ時点で、 `Settings` のインスタンスが作成され、ymlで定義した一番上の層がメソッドとして定義されている
+  - 「ymlで定義した一番上の層」とはここでは test と hoge のことで、それぞれがクラスメソッド、インスタンスメソッドとして作成されている
+- 定義しているのは以下のメソッド
+
+```ruby
+def create_accessor_for(key, val=nil)
+  return unless key.to_s =~ /^\w+$/  # could have "some-setting:" which blows up eval
+  instance_variable_set("@#{key}", val)
+  self.class.class_eval <<-EndEval
+    def #{key}
+      return @#{key} if @#{key}
+      return missing_key("Missing setting '#{key}' in #{@section}") unless has_key? '#{key}'
+      value = fetch('#{key}')
+      @#{key} = if value.is_a?(Hash)
+        self.class.new(value, "'#{key}' section in #{@section}")
+      elsif value.is_a?(Array) && value.all?{|v| v.is_a? Hash}
+        value.map{|v| self.class.new(v)}
+      else
+        value
+      end
+    end
+  EndEval
+end
+```
+
+- 例えば、 `Settings.test` と呼び出されたときは、 `Settings.new.test` と同等の処理が行われる
+- `Settings.new` はymlの内容をハッシュ化したオブジェクトなので、以下のようなオブジェクトが生成される
+
+```ruby
+{
+  "test"=>{
+    "text1"=>"abcd", "text2"=>"xyz"
+  },
+  "hoge"=>{
+    "huga"=>12345}
+  }
+```
+
+- `Settings.new.test` は上記Settingsクラスのインスタンスに対して `test` が呼ばれるので、上記オブジェクトをレシーバとした `def test 〜 end` メソッドが呼び出される
+- `value = fetch('#{key}')` は `value = fetch('test')` となるので、ここでは `{"text1"=>"abcd", "text2"=>"xyz"}` が value となる
+  - `fetch` はハッシュクラスのメソッドだが、SettingslogicクラスがHashクラスを継承しており、さらにSettingsクラスがSettingslogicクラスを継承しているため使用できる
+- 変数 value に格納されているオブジェクトは Hash のインスタンスであるため、 `self.class.new(value, "'#{key}' section in #{@section}")` が実行され、インスタンス変数 `@test` にはここで生成されるオブジェクトが格納される
+- `self.class.new(value, "'#{key}' section in #{@section}")` で生成されるのは、やはり `Settings` クラスのインスタンスで、 `{"text1"=>"abcd", "text2"=>"xyz"}` を格納している
+  - ここで `self.class.new(value, "'#{key}' section in #{@section}")` が実行された時点で、 `value(= {"text1"=>"abcd", "text2"=>"xyz"})` をselfとしたinitializeが実行されるため、 `text1` や `text2` インスタンスメソッドが動的に定義されている
+- 以上から、 `Settings.test` で返ってくるのは `{"text1"=>"abcd", "text2"=>"xyz"}` という `Settings` クラスのインスタンスなので、さらにメソッド呼び出しが可能である
+- 以降はレシーバが変化するだけで同じことが行われる
+  - `Settings.test` で返ってきた `{"text1"=>"abcd", "text2"=>"xyz"}` に対して `text1` を呼び出すと、既に動的にメソッドが定義済みなので、 `create_accessor_for` メソッドの `self.class.class_eval <<-EndEval 〜 EndEval` ので定義されたメソッドが実行される
+  - `text1` メソッドが呼び出されるのは初めてなので、 `@text1` はnilであり、 `fetch("text1")` で `abcd` という文字列が取得できるので、最後の `else` の `value` が返る
+- こんな感じにインスタンスを生成しながら階層を辿ってデータにアクセスすることが可能になっている
+
+# ブラケット記法でアクセスしているとき
 - tmp
