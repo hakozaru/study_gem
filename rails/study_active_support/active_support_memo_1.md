@@ -32,6 +32,8 @@ end
   - `@_eager_autoload` には `false` が格納されているので、 `@_autoloads` に変更はない
   - `super const_name, path` はオーバーライドしていたRuby標準モジュールの `autoload` メソッドを呼び出している
     - ちなみに `autoload` の働きは `ネストされたクラスやモジュールが必要になったときにRubyファイルを自動的に読み込む（requireする）ことができます` といった感じ
+    - `require` は実行された瞬間に必ずファイルが読み込まれるが、 `autoload` は読み込みの予約だけをしておき、実際にモジュールなどが呼び出された(参照された)らファイルを読み込む。 もし呼ばれなければファイルは読み込まれない。
+    - 使うかどうかわからない場合は `autoload` の方が無駄な処理がないのでエコ。
   - 要するにここでは `ActiveSupport::Concern` や `ActiveSupport::Dependencies` を使えるようにファイルを読み込んでいる
 - `eager_autoload do 〜 end` の部分
   - これも `Autoload` モジュールに定義されているメソッドで、内容は以下のとおり
