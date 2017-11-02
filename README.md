@@ -8,3 +8,4 @@
 1. gem/gem_memo.md
 1. banken
 1. settingslogic
+1. active_support(core_ext)
