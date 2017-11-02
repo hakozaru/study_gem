@@ -108,4 +108,32 @@ end
   - そして、 `mattr_accessor :hakozaru, instance_accessor: true` とすれば、インスタンスからもアクセスできるアクセサが同時に定義される
   - `mattr_accessor :hakozaru, instance_accessor: false` と明示的に指定しなければ基本的にクラス、インスタンスメソッドが定義される
 - ということで、 `require "active_support"` をするだけでは特に何かできるようになるわけではなさそう
-- 次に続く
+
+# じゃあどうすれば便利メソッドを使えるのか
+- `active_support` を `require` するだけでは特に何もできるようにはならない( `mattr_accessor` とかを定義できるようになるくらい)っぽいので、 `nil.blank?` などを使えるようにするにはどうすればいいのか探る
+- READMEとか読んでもよくわからんので、適当に `grep` して検索してみると、 `core_ext/date_time/blank.rb` とか `core_ext/object/blank.rb` とかで `blank?` が定義されているっぽい
+- `require` したかったファイルは間違いなく `object/blank.rb` なので `active_support/core_ext/object/blank` を `require` すると、 `nil.blank? => true` できた！
+- なるほど、こうやって必要な機能だけを読み込むこともできるらしい
+- ちなみに `nil.blank?` は以下のような定義になっている
+
+```ruby
+class NilClass
+  # +nil+ is blank:
+  #
+  #   nil.blank? # => true
+  #
+  # @return [true]
+  def blank?
+    true
+  end
+end
+```
+
+- 他にもRubyの標準クラスをオープンして `.blank?` が定義されている
+- ここで見た `active_support/core_ext` 以下は、 `Date` とか `Hash` とか `Array` に便利メソッドを追加するディレクトリらしい
+  - さっきのように `active_support/core_ext/object/blank` とピンポイントで特定の便利メソッドをロードすることもできるが、 `require "active_support/core_ext/object"` とすると、 `Object` クラスに関する便利メソッドが全てロードされるようになっている( 言い換えれば `active_support/core_ext/object` 以下のファイルを全て `require` しているだけ )
+
+# まとめ
+- `active_support` を `require` するだけではほとんど何も使えるようにはならず、使いたい機能を適宜読み込んで使用する設計
+- `nil.blank?` を使いたければ `active_support/core_ext/object/blank` をピンポイントで読み込むだけでOK( `require "active_support"` すらいらない )
+- `active_support` の便利メソッドに関してはこんな感じ
